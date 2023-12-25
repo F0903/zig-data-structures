@@ -209,11 +209,15 @@ test "linked list" {
     try list.push(15);
     try list.remove(1);
     for (0..list.count) |i| {
-        const item = list.get(i);
+        const item = try list.get(i);
         switch (i) {
             0 => try expect(item == 5),
             1 => try expect(item == 15),
             else => std.log.warn("Unexpected extra value in test. Might have forgotten to update the test.", .{}),
         }
     }
+
+    try list.insert(2, 500);
+    var second = try list.get(2);
+    try expect(second == 500);
 }

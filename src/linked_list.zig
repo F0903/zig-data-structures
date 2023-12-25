@@ -109,8 +109,8 @@ pub fn LinkedList(comptime T: type) type {
             return (self.tip orelse return null).value;
         }
 
-        fn get_node(self: *Self, index: usize) !?*Node(T) {
-            var current = self.start orelse return null;
+        fn get_node(self: *Self, index: usize) !*Node(T) {
+            var current = self.start orelse return Errors.IndexOutOfRange;
             for (0..self.count) |i| {
                 if (i == index)
                     return current;
@@ -121,13 +121,13 @@ pub fn LinkedList(comptime T: type) type {
             return Errors.IndexOutOfRange;
         }
 
-        pub fn get(self: *Self, index: usize) !?T {
-            const node = try self.get_node(index) orelse return null;
+        pub fn get(self: *Self, index: usize) !T {
+            const node = try self.get_node(index);
             return node.value;
         }
 
         pub fn remove(self: *Self, index: usize) !void {
-            var node = try self.get_node(index) orelse return Errors.IndexOutOfRange;
+            var node = try self.get_node(index);
             if (index == 0) {
                 self.start = node.next;
             }
@@ -136,6 +136,30 @@ pub fn LinkedList(comptime T: type) type {
             }
             node.deinit(self.allocator);
             self.count -= 1;
+        }
+
+        pub fn insert(self: *Self, index: usize, value: T) !void {
+            var new_node = try Node(T).init(value, self.allocator);
+            if (index == 0) {
+                var old_start = self.start orelse return Errors.IndexOutOfRange;
+                self.start = new_node;
+                old_start.prev = new_node;
+                new_node.next = old_start;
+                self.count += 1;
+                return;
+            }
+
+            if (index == self.count) {
+                self.tip = new_node;
+            }
+            var node = try self.get_node(index - 1);
+            new_node.next = node.next;
+            new_node.prev = node;
+            if (node.next) |old_next| {
+                old_next.prev = new_node;
+            }
+            node.next = new_node;
+            self.count += 1;
         }
     };
 }

@@ -29,14 +29,14 @@ pub fn main() !void {
     try list.remove(0);
     try list.remove(2);
 
+    try list.insert(1, 20);
+    try list.insert(0, 5);
+    try list.insert(2, 50);
+
     std.debug.print("Getting values.\n", .{});
     for (0..list.count) |i| {
         const item = try list.get(i);
-        if (item) |it| {
-            std.debug.print("Value {} = {}\n", .{ i, it });
-        } else {
-            std.debug.print("Value {} = None\n", .{i});
-        }
+        std.debug.print("Value {} = {}\n", .{ i, item });
     }
 
     std.debug.print("Popping values.\n", .{});

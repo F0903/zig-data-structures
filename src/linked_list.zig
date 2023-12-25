@@ -3,6 +3,8 @@ const Allocator = std.mem.Allocator;
 
 fn Node(comptime T: type) type {
     return struct {
+        const Self = @This();
+
         value: T,
         next: ?*Node(T),
         prev: ?*Node(T),
@@ -13,17 +15,17 @@ fn Node(comptime T: type) type {
             return self;
         }
 
-        pub fn deinit(self: *Node(T), allocator: Allocator) void {
+        pub fn deinit(self: *Self, allocator: Allocator) void {
             if (self.prev) |prev| {
                 prev.next = self.next;
-                if (self.next) |next| {
-                    next.prev = prev;
-                }
+            }
+            if (self.next) |next| {
+                next.prev = self.prev;
             }
             allocator.destroy(self);
         }
 
-        pub fn deinit_children(self: *Node(T), allocator: Allocator) void {
+        pub fn deinit_children(self: *Self, allocator: Allocator) void {
             if (self.next) |next| {
                 next.deinit_children(allocator);
                 self.next = null;
@@ -33,22 +35,23 @@ fn Node(comptime T: type) type {
             }
             allocator.destroy(self);
         }
-
-        pub fn remove_child(self: *Node(T), allocator: Allocator) void {
-            self.next.deinit(allocator);
-            self.next = null;
-        }
     };
 }
 
 pub fn LinkedList(comptime T: type) type {
     return struct {
+        const Self = @This();
+
+        const Errors = error{
+            IndexOutOfRange,
+        };
+
         allocator: Allocator,
         start: ?*Node(T),
         tip: ?*Node(T),
         count: usize,
 
-        pub fn init(allocator: Allocator) !LinkedList(T) {
+        pub fn init(allocator: Allocator) Self {
             return .{
                 .allocator = allocator,
                 .start = null,
@@ -57,7 +60,7 @@ pub fn LinkedList(comptime T: type) type {
             };
         }
 
-        pub fn deinit(self: *LinkedList(T)) void {
+        pub fn deinit(self: *Self) void {
             if (self.start) |start| {
                 start.deinit_children(self.allocator);
             }
@@ -66,7 +69,7 @@ pub fn LinkedList(comptime T: type) type {
             self.count = 0;
         }
 
-        pub fn push(self: *LinkedList(T), value: T) !void {
+        pub fn push(self: *Self, value: T) !void {
             if (self.tip == null) {
                 var start = try Node(T).init(value, self.allocator);
                 self.start = start;
@@ -84,7 +87,7 @@ pub fn LinkedList(comptime T: type) type {
             self.count += 1;
         }
 
-        pub fn pop(self: *LinkedList(T)) ?T {
+        pub fn pop(self: *Self) ?T {
             var old_tip = self.tip orelse return null;
             const val = old_tip.value;
             if (old_tip.prev == null) {
@@ -98,24 +101,41 @@ pub fn LinkedList(comptime T: type) type {
             return val;
         }
 
-        pub fn get_first(self: *LinkedList(T)) ?T {
+        pub fn get_first(self: *Self) ?T {
             return (self.start orelse return null).value;
         }
 
-        pub fn get_last(self: *LinkedList(T)) ?T {
+        pub fn get_last(self: *Self) ?T {
             return (self.tip orelse return null).value;
         }
 
-        pub fn get(self: *LinkedList(T), index: usize) ?T {
+        fn get_node(self: *Self, index: usize) !?*Node(T) {
             var current = self.start orelse return null;
             for (0..self.count) |i| {
                 if (i == index)
-                    return current.value;
+                    return current;
                 if (current.next) |next_node| {
                     current = next_node;
                 } else break;
             }
-            return null;
+            return Errors.IndexOutOfRange;
+        }
+
+        pub fn get(self: *Self, index: usize) !?T {
+            const node = try self.get_node(index) orelse return null;
+            return node.value;
+        }
+
+        pub fn remove(self: *Self, index: usize) !void {
+            var node = try self.get_node(index) orelse return Errors.IndexOutOfRange;
+            if (index == 0) {
+                self.start = node.next;
+            }
+            if (node == self.tip) {
+                self.tip = node.prev;
+            }
+            node.deinit(self.allocator);
+            self.count -= 1;
         }
     };
 }
@@ -123,7 +143,7 @@ pub fn LinkedList(comptime T: type) type {
 test "linked list" {
     const expect = @import("std").testing.expect;
 
-    var list = try LinkedList(u32).init(std.testing.allocator);
+    var list = LinkedList(u32).init(std.testing.allocator);
     defer list.deinit();
 
     try list.push(1);
@@ -138,25 +158,38 @@ test "linked list" {
     try expect(last == 1000);
 
     for (0..list.count) |i| {
-        const item = list.get(i);
+        const item = try list.get(i);
         switch (i) {
             0 => try expect(item == 1),
             1 => try expect(item == 10),
             2 => try expect(item == 100),
             3 => try expect(item == 1000),
-            else => std.log.warn("Unexpected value in test. Might have forgotten to update the test.", .{}),
+            else => std.log.warn("Unexpected extra value in test. Might have forgotten to update the test.", .{}),
         }
     }
 
-    var i: u32 = 0;
+    var index: u32 = 0;
     while (list.pop()) |item| {
-        switch (i) {
+        switch (index) {
             0 => try expect(item == 1000),
             1 => try expect(item == 100),
             2 => try expect(item == 10),
             3 => try expect(item == 1),
-            else => std.log.warn("Unexpected value in test. Might have forgotten to update the test.", .{}),
+            else => std.log.warn("Unexpected extra value in test. Might have forgotten to update the test.", .{}),
         }
-        i += 1;
+        index += 1;
+    }
+
+    try list.push(5);
+    try list.push(10);
+    try list.push(15);
+    try list.remove(1);
+    for (0..list.count) |i| {
+        const item = list.get(i);
+        switch (i) {
+            0 => try expect(item == 5),
+            1 => try expect(item == 15),
+            else => std.log.warn("Unexpected extra value in test. Might have forgotten to update the test.", .{}),
+        }
     }
 }

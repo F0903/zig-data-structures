@@ -11,7 +11,7 @@ pub fn main() !void {
     };
     var allocator = gpa.allocator();
 
-    var list = try llist.LinkedList(u32).init(allocator);
+    var list = llist.LinkedList(u32).init(allocator);
     defer list.deinit();
 
     if (list.get_first()) |first_val| {
@@ -20,11 +20,26 @@ pub fn main() !void {
         std.debug.print("List contained no values.\n", .{});
     }
 
-    std.debug.print("Pusing value.\n", .{});
+    std.debug.print("Pushing values.\n", .{});
     try list.push(1);
     try list.push(10);
     try list.push(100);
+    try list.push(1000);
 
+    try list.remove(0);
+    try list.remove(2);
+
+    std.debug.print("Getting values.\n", .{});
+    for (0..list.count) |i| {
+        const item = try list.get(i);
+        if (item) |it| {
+            std.debug.print("Value {} = {}\n", .{ i, it });
+        } else {
+            std.debug.print("Value {} = None\n", .{i});
+        }
+    }
+
+    std.debug.print("Popping values.\n", .{});
     for (0..list.count) |i| {
         const item = list.pop();
         if (item) |it| {

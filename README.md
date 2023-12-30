@@ -1,3 +1,3 @@
 # zig-data-structures
 
-Writing basic data structures in Zig for learning purposes.
+Basic data structures in Zig written for learning purposes.

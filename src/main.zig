@@ -51,9 +51,16 @@ fn dynamic_array(allocator: std.mem.Allocator) !void {
     try array.push(80);
     try array.push(100);
 
+    const first = array.remove(0);
+    _ = first;
+    const last = array.remove(array.count - 1);
+    _ = last;
+
+    try array.push_slice(&[_]u32{ 33, 66, 99, 132 });
+
     for (0..array.count) |i| {
-        const elem = array.get(i);
-        std.debug.print("{} = {}", .{ i, elem });
+        const elem = array.get(i).*;
+        std.debug.print("{} = {}\n", .{ i, elem });
     }
 }
 

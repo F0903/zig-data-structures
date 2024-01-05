@@ -44,28 +44,47 @@ pub fn DynamicArray(comptime T: type) type {
             self.count += 1;
         }
 
-        pub fn get_front(self: *Self) T {
-            return self.data[self.count];
+        pub fn push_slice(self: *Self, slice: []const T) !void {
+            try self.ensure_capacity(slice.len);
+            @memcpy(self.data.ptr + self.count, slice);
+            self.count += slice.len;
         }
 
-        pub fn get(self: *Self, index: usize) T {
-            return self.data[index];
+        pub fn get_front(self: *Self) *T {
+            return &self.data[self.count];
         }
 
-        pub fn set(self: *Self, index: usize, value: T) void {
-            self.data[index] = value;
+        pub fn get(self: *Self, index: usize) *T {
+            return &self.data[index];
         }
 
         pub fn insert(self: *Self, index: usize, value: T) !void {
             try self.ensure_capacity(1);
-            var last = self.data[index];
-            for (index + 1..self.count + 1) |i| {
-                var item_ptr = self.data[i];
-                var old = item_ptr.*;
+            var last = self.data[@max(index, 1) - 1];
+            for (index..self.count + 1) |i| {
+                var item_ptr = &self.data[i];
+                var item = item_ptr.*;
                 item_ptr.* = last;
-                last = old;
+                last = item;
             }
             self.data[index] = value;
+            self.count += 1;
+        }
+
+        pub fn remove(self: *Self, index: usize) T {
+            if (index == self.count - 1) {
+                var last = self.data[index];
+                self.count -= 1;
+                return last;
+            }
+            var index_value = self.data[index];
+            for (index..self.count - 1) |i| {
+                var item_ptr = &self.data[i];
+                var next_ptr = &self.data[i + 1];
+                item_ptr.* = next_ptr.*;
+            }
+            self.count -= 1;
+            return index_value;
         }
     };
 }

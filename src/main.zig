@@ -45,16 +45,30 @@ fn linked_list(allocator: std.mem.Allocator) !void {
 fn dynamic_array(allocator: std.mem.Allocator) !void {
     var array = try dyn_array.DynamicArray(u32).init(0, allocator);
     defer array.deinit();
-    try array.push(20);
-    try array.push(40);
-    try array.push(60);
-    try array.push(80);
-    try array.push(100);
 
+    const time = std.time.Instant;
+
+    const before_push = try time.now();
+    for (0..10000000) |i| {
+        try array.push(@intCast(i));
+    }
+    const after_push = try time.now();
+    const push_total = after_push.since(before_push);
+    std.debug.print("Pusing took {}us\n", .{push_total / 1000});
+
+    const before_remove_first = try time.now();
     const first = array.remove(0);
     _ = first;
+    const after_remove_first = try time.now();
+    const total_remove_first = after_remove_first.since(before_remove_first);
+
+    const before_remove_last = try time.now();
     const last = array.remove(array.count - 1);
     _ = last;
+    const after_remove_last = try time.now();
+    const total_remove_last = after_remove_last.since(before_remove_last);
+
+    std.debug.print("Removing first item took {}us\nRemoving last item took {}us\n", .{ total_remove_first / 1000, total_remove_last / 1000 });
 
     try array.push_slice(&[_]u32{ 33, 66, 99, 132 });
 

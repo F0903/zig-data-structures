@@ -23,13 +23,7 @@ pub fn DynamicArray(comptime T: type) type {
         fn resize(self: *Self, new_size: usize) !void {
             const half_size = new_size >> 1;
             const total_new_size = new_size + half_size; // Make it 1.5 times bigger.
-            const result = self.allocator.resize(self.data, total_new_size);
-            if (!result) {
-                var new_mem = try self.allocator.alloc(T, total_new_size);
-                @memcpy(new_mem.ptr, self.data);
-                self.allocator.free(self.data);
-                self.data = new_mem;
-            }
+            self.data = try self.allocator.realloc(self.data, total_new_size);
         }
 
         fn ensure_capacity(self: *Self, new_objects_count: usize) !void {
